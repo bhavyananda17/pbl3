@@ -45,6 +45,18 @@ features:
 study:
   correction_window: 10   # frames with a face averaged into one logged example
 
+# Per-user adapters on the frozen model's features (src/personalize.py). Untuned defaults: do not
+# tune them on the sessions you evaluate on.
+personalize:
+  k0: 8                   # blend weight w = n / (n + k0), n = the user's labelled examples
+  logistic:
+    C: 0.1                # inverse L2 strength (small = strong regularisation)
+  prototype:
+    temperature: 0.1      # softmax over cosine similarities
+  learning_curve_ks: [0, 1, 2, 4, 8, 16, all]
+  min_examples_warn: 30   # evaluation warns for users with fewer examples than this
+  min_test_examples_warn: 20
+
 preprocessing:
   # Training fed Keras flow_from_directory: PIL grayscale ("L"), then x * rescale (float32).
   color_mode: grayscale

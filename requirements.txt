@@ -9,5 +9,9 @@ numpy==1.26.4
 pillow==13.0.0
 opencv-python==4.11.0.86
 PyYAML==6.0.3
+# Per-user adapters and the evaluation script (same versions as the old repo).
+scikit-learn==1.9.1
+scipy==1.17.1
+matplotlib==3.11.2
 # Not in the old repo: test runner for this one.
 pytest==8.4.2
