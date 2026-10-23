@@ -89,3 +89,63 @@ def test_corrections_folder_is_gitignored():
     for path in ("data/corrections/P01/s01.jsonl", "data/corrections/P01/s01.npy"):
         r = subprocess.run(["git", "check-ignore", "-q", path], cwd=root)
         assert r.returncode == 0, f"{path} is not gitignored"
+
+
+# -- recommendation events ---------------------------------------------------------------------
+def fake_recs(n=3):
+    from src.recommend import Recommendation, Song
+
+    return [Recommendation(Song(f"S{i}", "t", "a", "en", "Happy", "u"), 0.1 * i if i else None) for i in range(n)]
+
+
+def test_recommendation_and_rating_records(tmp_path):
+    from src.correction_log import load_events
+
+    log = make_log(tmp_path)
+    rid = log.add_recommendation("va", probs_for("Happy"), "adapter:logistic+generic", "en", fake_recs())
+    rid2 = log.add_recommendation("va", probs_for("Sad"), "generic", None, fake_recs(1))
+    log.add_rating(rid, "S1", 4)
+    recs, ratings = load_events(log.jsonl_path)
+    assert (rid, rid2) == (0, 1) and [r["recommendation_id"] for r in recs] == [0, 1]
+    assert recs[0]["prob_source"] == "adapter:logistic+generic" and recs[0]["language"] == "en"
+    assert [s["song_id"] for s in recs[0]["songs"]] == ["S0", "S1", "S2"] and recs[0]["songs"][0]["rank"] == 1
+    assert ratings[0]["rating"] == 4 and ratings[0]["song_id"] == "S1" and ratings[0]["recommendation_id"] == 0
+    assert all("feature_row" not in r for r in recs + ratings)
+
+
+@pytest.mark.parametrize("bad", [0, 6, -1])
+def test_rating_must_be_1_to_5(tmp_path, bad):
+    with pytest.raises(ValueError):
+        make_log(tmp_path).add_rating(0, "S1", bad)
+
+
+def test_events_do_not_disturb_corrections_or_alignment(tmp_path):
+    log = make_log(tmp_path)
+    log.add_recommendation("label", probs_for("Happy"), "generic", None, fake_recs())
+    log.add(probs_for("Happy"), np.full(512, 1.0, dtype=np.float32), "Happy", 10)
+    log.add_recommendation("label", probs_for("Happy"), "generic", None, fake_recs())
+    log.add(probs_for("Sad"), np.full(512, 2.0, dtype=np.float32), "Sad", 10)
+    records, feats = load_session(log.jsonl_path)
+    assert [r["type"] for r in records] == ["correction", "correction"] and feats.shape == (2, 512)
+    assert [feats[r["feature_row"], 0] for r in records] == [1.0, 2.0]
+
+
+def test_session_with_only_recommendations_loads_and_is_skipped_by_evaluation(tmp_path):
+    from src.base_model import load_config
+    from src.evaluation import load_logs
+
+    log = make_log(tmp_path)
+    log.add_recommendation("label", probs_for("Happy"), "generic", None, fake_recs())
+    assert not log.npy_path.exists()
+    assert load_session(log.jsonl_path)[0] == []
+    assert load_logs(tmp_path, load_config()["classes"]) == {}
+
+
+def test_old_records_without_type_still_count_as_corrections(tmp_path):
+    log = make_log(tmp_path)
+    log.add(probs_for("Happy"), np.zeros(512, dtype=np.float32), "Happy", 10)
+    lines = [json.loads(l) for l in open(log.jsonl_path)]
+    for r in lines:
+        r.pop("type")
+    log.jsonl_path.write_text("".join(json.dumps(r) + "\n" for r in lines))
+    assert len(load_session(log.jsonl_path)[0]) == 1

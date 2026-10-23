@@ -33,7 +33,8 @@ def load_logs(log_dir, classes):
     """
     groups = defaultdict(list)
     for jsonl in sorted(Path(log_dir).glob("*/s*.jsonl")):
-        records = [json.loads(l) for l in open(jsonl) if l.strip()]
+        records = [r for r in (json.loads(l) for l in open(jsonl) if l.strip())
+                   if r.get("type", "correction") == "correction"]  # skip recommendation / rating events
         if not records:
             continue
         feats = np.load(jsonl.with_suffix(".npy"))
