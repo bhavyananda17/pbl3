@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Datasets and per-user data: never commit
+data/
+data/corrections/
+
+# Per-user models (one per participant, built from their corrections)
+models/users/
+
+# Face images and video (participants' faces must never reach git)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.webp
+*.heic
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+# Figures made for the paper may go in docs/
+!docs/**/*.png
+
+# Paper PDFs (link to them instead)
+*.pdf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.ipynb_checkpoints/

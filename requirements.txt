@@ -1,0 +1,13 @@
+# Python 3.11.15, same as the base-model repo (facial-emotion-recognition-cnn).
+# Only what is needed to load and run the frozen base model.
+tensorflow==2.18.1
+# Apple GPU support, the release built for TF 2.18. Remove on Linux/Windows or to force CPU.
+tensorflow-metal==1.2.0; sys_platform == "darwin" and platform_machine == "arm64"
+# TF 2.18 only requires keras>=3.5, so pin the release the base model was trained with.
+keras==3.8.0
+numpy==1.26.4
+pillow==13.0.0
+opencv-python==4.11.0.86
+PyYAML==6.0.3
+# Not in the old repo: test runner for this one.
+pytest==8.4.2
