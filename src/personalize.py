@@ -194,3 +194,30 @@ def load_adapter(user_id, model_name, kind, expected_sha256, expected_classes, r
         if arrays["prototypes"].size:
             a.prototypes = arrays["prototypes"]
     return a
+
+
+def load_user_adapters(user_id, model_name, model_sha256, classes, root=USERS_DIR):
+    """{kind: adapter} for the adapters saved for this user and base model (kinds without a file are skipped).
+    Raises ValueError if a saved adapter was made with a different base model file or class order."""
+    found = {}
+    for kind in KINDS:
+        if (Path(root) / user_id / f"{model_name}_{kind}.json").exists():
+            found[kind] = load_adapter(user_id, model_name, kind, model_sha256, classes, root)
+    return found
+
+
+def personalised_probabilities(choice, adapters, features, generic, k0):
+    """Probabilities to act on: (7,) array and a label saying where they came from.
+
+    choice: 'generic', 'logistic', 'prototype', 'logistic+generic' or 'prototype+generic'. If the
+    chosen adapter does not exist for this user, the generic probabilities are returned.
+    """
+    generic = np.asarray(generic, dtype=np.float64)
+    kind = choice.split("+")[0]
+    if kind == "generic" or kind not in adapters:
+        return generic, "generic"
+    adapter = adapters[kind]
+    p_user = adapter.predict_proba(np.asarray(features, dtype=np.float64)[None], generic[None])
+    if choice.endswith("+generic"):
+        p_user = blend(p_user, generic[None], adapter.n_examples, k0)
+    return p_user[0], f"adapter:{choice}"

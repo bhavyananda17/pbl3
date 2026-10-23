@@ -3,7 +3,7 @@
 recommender: label                       # label (LabelPlaylistRecommender) | va (VARecommender)
 songs_csv: configs/example_songs.csv     # fake EXAMPLE rows; point this at a real dataset (README: schema)
 n: 5                                     # songs shown per press of R
-recent_memory: 20                        # a song shown in the last 20 recommendations is not repeated
+recent_memory: 20                        # the last 20 songs shown are not repeated
 seed: 0                                  # label recommender: seed for the random pick among matches
 # Which probabilities key R uses when the user has a saved adapter (models/users/<id>/):
 # logistic | prototype | logistic+generic | prototype+generic | generic. Without an adapter: generic.
