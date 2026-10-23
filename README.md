@@ -132,6 +132,56 @@ The script warns when a user has too few examples or sessions, when classes have
 session is small, and when the average is over fewer than 3 users. Heed those: with a handful of examples
 the numbers are anecdotes, not results.
 
+## Recommending songs (key R)
+
+`src/recommend.py` turns the (personalised) emotion probabilities into songs from a **local CSV**. No
+web API is called (Spotify's recommendation and audio-feature endpoints are closed to new apps). Two
+interchangeable recommenders, chosen by `recommender:` in `configs/recommend.yaml` or `--recommender`:
+
+- `label`: random pick (seeded) among songs labelled with the most probable emotion.
+- `va`: the probabilities become a valence-arousal point, the probability-weighted average of the
+  per-emotion coordinates in `configs/recommend.yaml`; songs' valence and energy (0-1) are rescaled with
+  `2x - 1` and the `n` nearest songs (Euclidean) are returned.
+
+Both take `recommend(probabilities, n=5, language=None, exclude=recent_ids)`. `language` keeps only
+songs in that language, `exclude` skips song ids (the study app excludes the last 20 songs shown).
+If fewer than `n` songs qualify you get fewer, never songs of another emotion.
+
+**Valence-arousal coordinates** (valence, arousal in [-1, 1]): Happy (0.8, 0.5), Surprise (0.2, 0.8),
+Angry (-0.6, 0.8), Fear (-0.7, 0.6), Disgust (-0.6, 0.3), Sad (-0.8, -0.5), Neutral (0, 0). They are
+approximate hand placements on Russell's (1980) circumplex and **must be justified in the paper** (cite
+a source or validate them); the results of the `va` recommender depend on them.
+
+**Song CSV schema** (`configs/example_songs.csv` is a fake example; every row is labelled EXAMPLE):
+
+| column | |
+|---|---|
+| `song_id` | unique id (required) |
+| `title`, `artist`, `url` | text (required) |
+| `language` | e.g. `en`, `hi`; compared case-insensitively (required) |
+| `emotion` | one of the classes in `configs/base.yaml` (required) |
+| `valence`, `energy` | numbers in [0, 1]; optional, required by `va` |
+
+Point `songs_csv` in `configs/recommend.yaml` (or `--songs path.csv`) at your dataset. Rows are
+validated at start-up with the line number of any error.
+
+In the study app, **R** shows `n` songs (`--language en` to filter) for the 10-frame average, like the
+correction keys (it warns if fewer than 10 face frames). The list stays open: `1`-`5` rates the highlighted
+song and moves on, `N` moves on without rating, `R` or `Esc` closes it (the emotion keys do nothing meanwhile).
+Probabilities come from the user's saved adapter if there is one, otherwise the generic model; the list
+shows which. To create adapters from a user's logs (all their sessions):
+
+```bash
+python scripts/fit_user_adapter.py --user-id P01          # saves to models/users/P01/ (gitignored)
+python -m src.study_app --user-id P01 --recommender va --language en
+```
+
+Which adapter output R uses is `probabilities:` in `configs/recommend.yaml` (default `logistic+generic`).
+Each press of R adds a `"type": "recommendation"` record (song ids, ranks, scores, the probabilities used and
+whether they came from an adapter) to the session's `.jsonl`; each rating adds a `"type": "rating"` record
+pointing at its `recommendation_id`. They have no row in the `.npy`, and `evaluate_user_logs.py` ignores them.
+Only song ids are stored, never images.
+
 ## Layout
 
 ```
@@ -140,12 +190,14 @@ src/preprocess.py     face detection and preprocessing (matches training)
 src/correction_log.py JSONL + .npy log of confirmed / corrected examples
 src/study_app.py      OpenCV study app (confirm or correct the detected emotion)
 src/personalize.py    per-user adapters, blending, save/load
+src/recommend.py      label and valence-arousal song recommenders (local CSV)
 src/evaluation.py     evaluation protocol on correction logs
 configs/base.yaml     model paths, sha256, class order, preprocessing, provenance
+configs/recommend.yaml recommender settings, valence-arousal coordinates; example_songs.csv
 models/base/          frozen base models (committed)
 models/users/         per-user models (gitignored)
 data/                 gitignored; data/corrections/ for user corrections
-scripts/              model export, match check, evaluate_user_logs.py
+scripts/              model export, match check, evaluate_user_logs.py, fit_user_adapter.py
 tests/
 ```
 
@@ -155,4 +207,4 @@ No face images, video, datasets or per-user data are ever committed (see `.gitig
 
 - ~~**Correction interface**~~ done: `src/study_app.py` logs corrections to `data/corrections/`.
 - ~~**Per-user layer**~~ done: `src/personalize.py`, evaluated by `scripts/evaluate_user_logs.py`.
-- **Recommendation step**: map the (personalised) emotion to music recommendations.
+- ~~**Recommendation step**~~ done: `src/recommend.py`, key R in the study app. Needs a real song dataset.
