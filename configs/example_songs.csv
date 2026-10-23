@@ -1,0 +1,22 @@
+song_id,title,artist,language,emotion,url,valence,energy
+EX-HAP-1,EXAMPLE song Happy 1,EXAMPLE artist,en,Happy,https://example.invalid/EX-HAP-1,0.84,0.81
+EX-HAP-2,EXAMPLE song Happy 2,EXAMPLE artist,hi,Happy,https://example.invalid/EX-HAP-2,0.94,0.71
+EX-HAP-3,EXAMPLE song Happy 3,EXAMPLE artist,en,Happy,https://example.invalid/EX-HAP-3,0.90,0.74
+EX-SUR-1,EXAMPLE song Surprise 1,EXAMPLE artist,en,Surprise,https://example.invalid/EX-SUR-1,0.62,0.95
+EX-SUR-2,EXAMPLE song Surprise 2,EXAMPLE artist,hi,Surprise,https://example.invalid/EX-SUR-2,0.54,0.82
+EX-SUR-3,EXAMPLE song Surprise 3,EXAMPLE artist,en,Surprise,https://example.invalid/EX-SUR-3,0.65,0.89
+EX-ANG-1,EXAMPLE song Angry 1,EXAMPLE artist,en,Angry,https://example.invalid/EX-ANG-1,0.24,0.82
+EX-ANG-2,EXAMPLE song Angry 2,EXAMPLE artist,hi,Angry,https://example.invalid/EX-ANG-2,0.19,0.94
+EX-ANG-3,EXAMPLE song Angry 3,EXAMPLE artist,en,Angry,https://example.invalid/EX-ANG-3,0.16,0.97
+EX-FEA-1,EXAMPLE song Fear 1,EXAMPLE artist,en,Fear,https://example.invalid/EX-FEA-1,0.21,0.72
+EX-FEA-2,EXAMPLE song Fear 2,EXAMPLE artist,hi,Fear,https://example.invalid/EX-FEA-2,0.07,0.81
+EX-FEA-3,EXAMPLE song Fear 3,EXAMPLE artist,en,Fear,https://example.invalid/EX-FEA-3,0.22,0.78
+EX-DIS-1,EXAMPLE song Disgust 1,EXAMPLE artist,en,Disgust,https://example.invalid/EX-DIS-1,0.15,0.64
+EX-DIS-2,EXAMPLE song Disgust 2,EXAMPLE artist,hi,Disgust,https://example.invalid/EX-DIS-2,0.12,0.61
+EX-DIS-3,EXAMPLE song Disgust 3,EXAMPLE artist,en,Disgust,https://example.invalid/EX-DIS-3,0.19,0.65
+EX-SAD-1,EXAMPLE song Sad 1,EXAMPLE artist,en,Sad,https://example.invalid/EX-SAD-1,0.06,0.21
+EX-SAD-2,EXAMPLE song Sad 2,EXAMPLE artist,hi,Sad,https://example.invalid/EX-SAD-2,0.06,0.24
+EX-SAD-3,EXAMPLE song Sad 3,EXAMPLE artist,en,Sad,https://example.invalid/EX-SAD-3,0.07,0.17
+EX-NEU-1,EXAMPLE song Neutral 1,EXAMPLE artist,en,Neutral,https://example.invalid/EX-NEU-1,0.55,0.51
+EX-NEU-2,EXAMPLE song Neutral 2,EXAMPLE artist,hi,Neutral,https://example.invalid/EX-NEU-2,0.52,0.45
+EX-NEU-3,EXAMPLE song Neutral 3,EXAMPLE artist,en,Neutral,https://example.invalid/EX-NEU-3,0.58,0.56

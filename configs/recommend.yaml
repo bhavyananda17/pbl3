@@ -1,0 +1,25 @@
+# Recommendation step (src/recommend.py). Songs come from a local CSV only; no web API is called.
+
+recommender: label                       # label (LabelPlaylistRecommender) | va (VARecommender)
+songs_csv: configs/example_songs.csv     # fake EXAMPLE rows; point this at a real dataset (README: schema)
+n: 5                                     # songs shown per press of R
+recent_memory: 20                        # a song shown in the last 20 recommendations is not repeated
+seed: 0                                  # label recommender: seed for the random pick among matches
+# Which probabilities key R uses when the user has a saved adapter (models/users/<id>/):
+# logistic | prototype | logistic+generic | prototype+generic | generic. Without an adapter: generic.
+probabilities: logistic+generic
+
+# Valence-arousal coordinates per emotion, each in [-1, 1]: (valence, arousal).
+# APPROXIMATE placements on Russell's (1980) circumplex model of affect, chosen by hand. They are not
+# measured values and MUST be justified in the paper (cite the placement you rely on, or validate
+# them, e.g. against a normative emotion-rating database) before any result depends on them.
+# Keys must match `classes` in configs/base.yaml. Song valence and energy (0-1) are rescaled with
+# 2x - 1 to the same range; energy is used as the arousal axis.
+emotion_va:
+  Happy:    [ 0.8,  0.5]
+  Surprise: [ 0.2,  0.8]
+  Angry:    [-0.6,  0.8]
+  Fear:     [-0.7,  0.6]
+  Disgust:  [-0.6,  0.3]
+  Sad:      [-0.8, -0.5]
+  Neutral:  [ 0.0,  0.0]
