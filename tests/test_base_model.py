@@ -88,3 +88,31 @@ def test_gray_matches_pil():
     rgb = rng.integers(0, 256, (32, 32, 3), dtype=np.uint8)
     expected = np.asarray(Image.fromarray(rgb).convert("L"))
     assert np.array_equal(preprocess.to_gray(rgb[:, :, ::-1], bgr=True), expected)
+
+
+def test_features_and_probabilities(base):
+    x = random_input(base)
+    probs, feats = base.predict_with_features(x)
+    assert feats.shape == (4, 512) and probs.shape == (4, 7)
+    assert np.array_equal(probs, base.predict_input(x))
+    # features are what the final softmax layer sees
+    final = base.model.layers[-1]
+    w, b = [v.numpy() for v in final.weights]
+    z = feats @ w + b
+    e = np.exp(z - z.max(axis=1, keepdims=True))
+    assert np.allclose((e / e.sum(axis=1, keepdims=True))[:, base.order], probs, atol=1e-5)
+
+
+def test_features_same_on_cpu_and_gpu(base):
+    import tensorflow as tf
+
+    if not tf.config.list_physical_devices("GPU"):
+        pytest.skip("no GPU")
+    x = random_input(base)
+    with tf.device("/CPU:0"):
+        _, cpu = base.predict_with_features(x)
+    with tf.device("/GPU:0"):
+        _, gpu = base.predict_with_features(x)
+    scale = max(1.0, float(np.abs(cpu).max()))
+    print(f"{base.name}: max |CPU-GPU| = {np.abs(cpu - gpu).max():.2e}, feature scale {scale:.1f}")
+    assert np.abs(cpu - gpu).max() <= 1e-5

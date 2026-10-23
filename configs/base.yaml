@@ -36,6 +36,15 @@ models:
       test_accuracy: 0.6475
       original_file_sha256: 2fea48b16525dacc1ce7890794a51a68b40d0b62bb0fa375bebb8c8262a085ce
 
+# Feature vector for per-user learning: the 512-d output of this layer, i.e. the input to the final
+# softmax Dense layer (Dropout after it is a no-op at inference).
+features:
+  layer: batch_normalization_8
+  dim: 512
+
+study:
+  correction_window: 10   # frames with a face averaged into one logged example
+
 preprocessing:
   # Training fed Keras flow_from_directory: PIL grayscale ("L"), then x * rescale (float32).
   color_mode: grayscale

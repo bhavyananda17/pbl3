@@ -84,6 +84,21 @@ class BaseModel:
         self.prep = self.cfg["preprocessing"]
         self._detector = None
 
+        import keras
+
+        self.feature_layer = self.cfg["features"]["layer"]
+        self.feature_dim = self.cfg["features"]["dim"]
+        # Re-chains the same frozen layers (shared, not copied) to expose the feature layer.
+        inp = keras.Input(shape=(*self.input_size, 1))
+        x, feats = inp, None
+        for layer in self.model.layers:
+            x = layer(x)
+            if layer.name == self.feature_layer:
+                feats = x
+        assert feats is not None, f"{self.name}: no layer named {self.feature_layer}"
+        self._with_features = keras.Model(inp, [feats, x])
+        assert self._with_features.outputs[0].shape[-1] == self.feature_dim
+
     # Model-native output, before reordering. Used by the match check against the old repo.
     def native_probs(self, x):
         return self.model(x, training=False).numpy()
@@ -91,6 +106,15 @@ class BaseModel:
     def predict_input(self, x):
         """(N, H, W, 1) float32 model input -> (N, 7) probabilities in `classes` order."""
         return self.native_probs(x)[:, self.order]
+
+    def predict_with_features(self, x):
+        """(N, H, W, 1) float32 model input -> ((N, 7) probabilities in `classes` order, (N, 512) features).
+
+        Features are the output of `features.layer` in configs/base.yaml (batch_normalization_8),
+        the vector the final softmax layer sees.
+        """
+        feats, probs = self._with_features(x, training=False)
+        return probs.numpy()[:, self.order], feats.numpy()
 
     def predict_gray(self, gray):
         """uint8 (H, W) gray face crop -> 7 probabilities."""
@@ -113,5 +137,8 @@ class BaseModel:
             return None, None
         return self.predict_face(preprocess.crop(frame_bgr, box)), box
 
-    # Planned: features(x) -> the 512-d output of the penultimate Dense layer, the input to the
-    # per-user layer. Not built yet.
+    def predict_face_with_features(self, face_bgr):
+        """BGR face crop -> (7 probabilities, 512 features)."""
+        x = preprocess.to_model_input(preprocess.to_gray(face_bgr, bgr=True), self.input_size, self.prep)
+        probs, feats = self.predict_with_features(x)
+        return probs[0], feats[0]
