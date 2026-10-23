@@ -55,11 +55,50 @@ Check that predictions match the old repo (needs its local checkout with the RAF
 python scripts/check_match.py --old-repo ../facial-emotion-recognition-cnn
 ```
 
+## Running a study session
+
+```bash
+python -m src.study_app --user-id P01                    # RAF-DB model, default camera
+python -m src.study_app --user-id P01 --model fer2013_clean --camera 1
+python -m src.study_app --list-cameras                   # find the Mac webcam (Continuity Camera can be 0)
+```
+
+`--user-id` is a pseudonym such as `P01` (a warning appears if it looks like a real name; e-mail
+addresses and spaces are rejected). `--session` defaults to the next unused number for that user.
+Run it from the macOS Terminal app and allow camera access. The window shows the detected emotion,
+per-class bars, the key map, face-frame count and confirm/correct counts.
+
+| Key | Action |
+|---|---|
+| `1`-`7` | the correct emotion, in the order of `classes` in `configs/base.yaml` (1 Angry, 2 Disgust, 3 Fear, 4 Happy, 5 Neutral, 6 Sad, 7 Surprise) |
+| Space | the prediction is correct |
+| `S` | skip |
+| `Q` | quit |
+
+A keypress logs the probabilities and 512-d features averaged over the last `study.correction_window`
+(10) frames that had a face. With fewer than 10, nothing is logged and a warning is shown. Frames are
+cleared when the face is lost and after each logged example, so every example uses fresh frames.
+
+Output, per user and session (`data/corrections/` is gitignored):
+
+```
+data/corrections/P01/s01.jsonl   one record per example: user_id, session_id, timestamp, model,
+                                 model_sha256, class_order, feature_layer, probabilities,
+                                 predicted_label, user_label, source (confirm|correct),
+                                 frames_averaged, feature_row
+data/corrections/P01/s01.npy     float32 (n, 512); row `feature_row` belongs to each record
+```
+
+Features are the output of `batch_normalization_8`, the input to the final softmax layer.
+No face images or frames are ever saved; a notice saying so is printed at start-up.
+
 ## Layout
 
 ```
 src/base_model.py     load the frozen model, return 7 probabilities
 src/preprocess.py     face detection and preprocessing (matches training)
+src/correction_log.py JSONL + .npy log of confirmed / corrected examples
+src/study_app.py      OpenCV study app (confirm or correct the detected emotion)
 configs/base.yaml     model paths, sha256, class order, preprocessing, provenance
 models/base/          frozen base models (committed)
 models/users/         per-user models (gitignored)
@@ -72,8 +111,7 @@ No face images, video, datasets or per-user data are ever committed (see `.gitig
 
 ## Planned work
 
-- **Correction interface**: show the predicted emotion, let the user correct it, store the
-  correction in `data/corrections/`.
+- ~~**Correction interface**~~ done: `src/study_app.py` logs corrections to `data/corrections/`.
 - **Per-user layer**: a small model per user on top of the frozen base model's 512-d feature
   vector, trained from that user's corrections, saved in `models/users/`.
 - **Recommendation step**: map the (personalised) emotion to music recommendations.

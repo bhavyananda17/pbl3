@@ -72,7 +72,7 @@ def handle_key(ch, window, classes, log):
     if ch != " " and ch not in keys:
         return None, False, False
     if not window.ready:
-        return f"Not logged: only {len(window)}/{window.size} face frames, hold still facing the camera", True, False
+        return f"Not logged: {len(window)}/{window.size} face frames, hold still", True, False
     probs, feats, n = window.mean()
     label = classes[int(np.argmax(probs))] if ch == " " else keys[ch]
     rec = log.add(probs, feats, label, n)
