@@ -1,0 +1,91 @@
+"""Logger checks with synthetic data.  Run: pytest"""
+
+import json
+import subprocess
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from src.correction_log import CorrectionLog, check_user_id, load_session, next_session
+
+CLASSES = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
+
+
+def make_log(tmp_path, user="P01", session=1):
+    return CorrectionLog(user, session, "rafdb_clean", "abc123", CLASSES, "batch_normalization_8", 512, tmp_path)
+
+
+def probs_for(label):
+    p = np.full(7, 0.02)
+    p[CLASSES.index(label)] = 0.88
+    return p
+
+
+def test_round_trip_and_alignment(tmp_path):
+    log = make_log(tmp_path)
+    rng = np.random.default_rng(0)
+    feats = rng.normal(size=(3, 512)).astype(np.float32)
+    plan = [("Happy", "Happy"), ("Sad", "Neutral"), ("Angry", "Fear")]  # (model says, user says)
+    for f, (pred, user) in zip(feats, plan):
+        log.add(probs_for(pred), f, user, 10)
+    records, loaded = load_session(log.jsonl_path)
+    assert len(records) == 3 and loaded.shape == (3, 512) and loaded.dtype == np.float32
+    for i, (r, (pred, user)) in enumerate(zip(records, plan)):
+        assert r["feature_row"] == i and np.array_equal(loaded[r["feature_row"]], feats[i])
+        assert r["predicted_label"] == pred and r["user_label"] == user
+        assert r["source"] == ("confirm" if pred == user else "correct")
+        assert r["class_order"] == CLASSES and r["probabilities"] == pytest.approx(probs_for(pred).tolist())
+        assert (r["user_id"], r["session_id"], r["model"], r["model_sha256"], r["frames_averaged"]) == \
+               ("P01", 1, "rafdb_clean", "abc123", 10)
+    assert log.counts == {"confirm": 1, "correct": 2}
+
+
+def test_files_stay_aligned_after_every_write(tmp_path):
+    log = make_log(tmp_path)
+    for i in range(4):
+        log.add(probs_for("Happy"), np.full(512, i, dtype=np.float32), "Happy", 10)
+        records, loaded = load_session(log.jsonl_path)
+        assert len(records) == len(loaded) == i + 1
+        assert loaded[i, 0] == i
+
+
+def test_session_auto_increment(tmp_path):
+    assert next_session(tmp_path, "P01") == 1
+    make_log(tmp_path, session=1).add(probs_for("Happy"), np.zeros(512), "Happy", 10)
+    assert next_session(tmp_path, "P01") == 2
+    make_log(tmp_path, session=2).add(probs_for("Happy"), np.zeros(512), "Happy", 10)
+    assert next_session(tmp_path, "P01") == 3
+    assert next_session(tmp_path, "P02") == 1  # other users are independent
+
+
+def test_existing_session_is_never_overwritten(tmp_path):
+    make_log(tmp_path).add(probs_for("Happy"), np.zeros(512), "Happy", 10)
+    with pytest.raises(FileExistsError):
+        make_log(tmp_path)
+
+
+def test_unknown_label_rejected(tmp_path):
+    with pytest.raises(ValueError):
+        make_log(tmp_path).add(probs_for("Happy"), np.zeros(512), "Joy", 10)
+
+
+def test_only_jsonl_and_npy_written(tmp_path):
+    make_log(tmp_path).add(probs_for("Happy"), np.zeros(512), "Happy", 10)
+    names = sorted(p.name for p in tmp_path.rglob("*") if p.is_file())
+    assert names == ["s01.jsonl", "s01.npy"]
+
+
+def test_user_id_checks():
+    assert check_user_id("P01") == []
+    assert check_user_id("alice") and check_user_id("Bhavya_Nanda")  # look like names -> warning
+    for bad in ("a@b.com", "../x", "P 01", "", "x" * 40):
+        with pytest.raises(ValueError):
+            check_user_id(bad)
+
+
+def test_corrections_folder_is_gitignored():
+    root = Path(__file__).resolve().parent.parent
+    for path in ("data/corrections/P01/s01.jsonl", "data/corrections/P01/s01.npy"):
+        r = subprocess.run(["git", "check-ignore", "-q", path], cwd=root)
+        assert r.returncode == 0, f"{path} is not gitignored"
