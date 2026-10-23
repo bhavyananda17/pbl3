@@ -1,0 +1,50 @@
+# Frozen base model: the 7-class facial emotion CNN of Raj & Demirkol (Scientific Reports, 2025),
+# trained in github.com/bhavyananda17/facial-emotion-recognition-cnn. Nothing here is retrained.
+
+provenance:
+  repo: https://github.com/bhavyananda17/facial-emotion-recognition-cnn
+  commit: 5d493eced732c6faec635a9954e3e6e07dfd102e   # old repo HEAD when the models were copied
+  # The old .keras files also held Adam optimizer state. scripts/export_base_models.py re-saved
+  # them without it; every weight is bit-identical (the script checks this).
+
+default_model: rafdb_clean
+
+# Probabilities from base_model are always returned in this order, whichever model is loaded,
+# so the correction interface, per-user layer and recommender never depend on the model choice.
+classes: [Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise]
+
+models:
+  rafdb_clean:
+    path: models/base/rafdb_clean.keras
+    sha256: b0e8ad4e2f0a21a8407ca14109418a6d496ac039468e6fef7cd166c776d798fb
+    input_size: [100, 100]        # height, width; 1 grayscale channel
+    # Output index -> class, as trained (folders 1..7 of RAF-DB, official coding).
+    native_classes: [Surprise, Fear, Disgust, Happy, Sad, Angry, Neutral]
+    trained:
+      protocol: clean              # early stopping on a held-out 10% of train, never the test set
+      commit: b76b344
+      test_accuracy: 0.8318
+      original_file_sha256: 873f2f97587fc2af9223e2621de22c13d7f44c3e03cc922dcc8ed5a44ef704b6
+  fer2013_clean:
+    path: models/base/fer2013_clean.keras
+    sha256: 8bbfd7eb8f952618ff4b99bb686ff5b71f047c789efa5c53296c6e0701cc85a7
+    input_size: [48, 48]
+    native_classes: [Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise]   # alphabetical folders
+    trained:
+      protocol: clean
+      commit: b76b344
+      test_accuracy: 0.6475
+      original_file_sha256: 2fea48b16525dacc1ce7890794a51a68b40d0b62bb0fa375bebb8c8262a085ce
+
+preprocessing:
+  # Training fed Keras flow_from_directory: PIL grayscale ("L"), then x * rescale (float32).
+  color_mode: grayscale
+  rescale: 0.00392156862745098    # 1/255, multiplied exactly as ImageDataGenerator does
+  # Training images were already face-sized, so training never resized. Live crops are shrunk
+  # with INTER_AREA, the right choice when downscaling.
+  resize_interpolation: area
+  face_detector:                  # same settings as the old repo's webcam demo
+    cascade: haarcascade_frontalface_default.xml
+    scale_factor: 1.1
+    min_neighbors: 5
+    min_size: 80                  # pixels; smaller faces are ignored
