@@ -182,6 +182,35 @@ whether they came from an adapter) to the session's `.jsonl`; each rating adds a
 pointing at its `recommendation_id`. They have no row in the `.npy`, and `evaluate_user_logs.py` ignores them.
 Only song ids are stored, never images.
 
+## Front-end demo (Streamlit)
+
+```bash
+source .venv/bin/activate
+python scripts/convert_songs.py          # once: builds data/songs/songs.csv (see below)
+streamlit run src/streamlit_app.py       # opens http://localhost:8501
+```
+
+Take a photo (or upload one if the camera is unavailable). The frozen CNN estimates the expression, you
+confirm it or pick the correct class, **Refit my adapter** trains the per-user adapters from that participant's
+logged examples, and **Recommend 5 songs** shows the nearest songs on the valence-arousal plot, each with a
+1-5 star rating. Everything runs locally; the photo is analysed in memory and never saved. Corrections, song
+lists and ratings go to the same `data/corrections/<id>/sNN.jsonl` + `.npy` files as the OpenCV study app.
+
+Differences from `src/study_app.py`: a photo is one frame, so records have `frames_averaged = 1` (the OpenCV
+app averages 10 frames); the demo shows the personalised prediction when an adapter exists and the song
+recommender defaults to `va`; it does not hide which condition produced the songs, so use the OpenCV app and
+a counterbalanced protocol for the actual study.
+
+**Song library.** `scripts/convert_songs.py` builds `data/songs/songs.csv` (gitignored) from the Kaggle file
+`spotify_tracks.csv` (dataset `gauthamvijayaraj/spotify-tracks-dataset-updated-every-week`, about 62k tracks
+with Spotify's `valence` and `energy`; its page states no license, so it is **not committed**). Download it into
+`data/songs/raw/` (`kaggle datasets download gauthamvijayaraj/spotify-tracks-dataset-updated-every-week -f
+spotify_tracks.csv -p data/songs/raw`). The script keeps the 250 most popular songs tagged English and 250
+tagged Hindi (the tag is the dataset's, unchecked), drops rows with missing values and duplicates, and derives
+`emotion` (used only by the `label` recommender) as the class nearest to the song's rescaled valence-energy
+point. Valence and energy are Spotify's algorithmic estimates, not human annotations. Without that file the
+app falls back to the fake EXAMPLE songs and says so.
+
 ## Layout
 
 ```
@@ -191,13 +220,14 @@ src/correction_log.py JSONL + .npy log of confirmed / corrected examples
 src/study_app.py      OpenCV study app (confirm or correct the detected emotion)
 src/personalize.py    per-user adapters, blending, save/load
 src/recommend.py      label and valence-arousal song recommenders (local CSV)
+src/streamlit_app.py  Streamlit front-end demo; src/demo.py holds its testable logic
 src/evaluation.py     evaluation protocol on correction logs
 configs/base.yaml     model paths, sha256, class order, preprocessing, provenance
 configs/recommend.yaml recommender settings, valence-arousal coordinates; example_songs.csv
 models/base/          frozen base models (committed)
 models/users/         per-user models (gitignored)
 data/                 gitignored; data/corrections/ for user corrections
-scripts/              model export, match check, evaluate_user_logs.py, fit_user_adapter.py
+scripts/              model export, match check, evaluate_user_logs.py, fit_user_adapter.py, convert_songs.py
 tests/
 ```
 
