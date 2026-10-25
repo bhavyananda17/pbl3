@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.personalize import blend, make_adapter
+from src.personalize import KINDS, USERS_DIR, blend, make_adapter
 
 METHODS = ["generic", "logistic", "prototype", "logistic+generic", "prototype+generic"]
 ONLINE_BUCKETS = [0, 1, 2, 4, 8, 16]  # an example with n earlier examples falls in the largest bucket <= n
@@ -190,4 +190,25 @@ def average_over_users(rows, classes):
                     "n_test": sum(r["n_test"] for r in rs),
                     "accuracy": float(np.nanmean([r["accuracy"] for r in rs])),
                     "macro_f1": float(np.nanmean([r["macro_f1"] for r in rs])), "recall": recall})
+    return out
+
+
+def fit_user_adapters(user_id, model, cfg, log_dir, root=USERS_DIR):
+    """Fit both adapters on ALL of a user's sessions for this base model and save them under `root`.
+
+    Returns {kind: (n_examples, counts)}; empty if the user has no logs. Do not evaluate on sessions
+    that were fitted on: use evaluate() for that.
+    """
+    classes = cfg["classes"]
+    sessions = [s for (user, m, _, _), ss in load_logs(log_dir, classes).items()
+                if user == user_id and m == model for s in ss]
+    if not sessions:
+        return {}
+    x, y = pool(sorted(sessions, key=lambda s: s["session"]))
+    sha = cfg["models"][model]["sha256"]
+    out = {}
+    for kind in KINDS:
+        adapter = make_adapter(kind, classes, cfg["personalize"]).fit(x, y)
+        adapter.save(user_id, model, sha, root=root)
+        out[kind] = (adapter.n_examples, adapter.counts)
     return out

@@ -5,7 +5,8 @@ import pytest
 
 from src.base_model import load_config
 from src.correction_log import CorrectionLog
-from src.evaluation import (average_over_users, evaluate, load_logs, main_splits, resolve_ks, score)
+from src.evaluation import (average_over_users, evaluate, fit_user_adapters, load_logs, main_splits, resolve_ks,
+                            score)
 
 CFG = load_config()
 CLASSES = CFG["classes"]
@@ -111,3 +112,16 @@ def test_average_over_users_is_unweighted(tmp_path):
     avg = average_over_users(rows, CLASSES)
     a = [r for r in avg if r["k"] == 0 and r["method"] == "generic"][0]
     assert a["n_users"] == 2
+
+
+def test_fit_user_adapters_saves_and_loads(tmp_path):
+    from src.personalize import load_user_adapters
+
+    write_session(tmp_path / "logs", "P01", 1, cycle(14), seed=1)
+    write_session(tmp_path / "logs", "P01", 2, cycle(7), seed=2)
+    write_session(tmp_path / "logs", "P02", 1, cycle(7), seed=3)
+    fitted = fit_user_adapters("P01", "rafdb_clean", CFG, tmp_path / "logs", root=tmp_path / "users")
+    assert set(fitted) == {"logistic", "prototype"} and fitted["logistic"][0] == 21   # P01 only, both sessions
+    loaded = load_user_adapters("P01", "rafdb_clean", CFG["models"]["rafdb_clean"]["sha256"], CLASSES, tmp_path / "users")
+    assert set(loaded) == {"logistic", "prototype"} and loaded["prototype"].n_examples == 21
+    assert fit_user_adapters("P99", "rafdb_clean", CFG, tmp_path / "logs", root=tmp_path / "users") == {}

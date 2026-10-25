@@ -13,5 +13,10 @@ PyYAML==6.0.3
 scikit-learn==1.9.1
 scipy==1.17.1
 matplotlib==3.11.2
+# Front-end demo (src/streamlit_app.py). numpy and pillow stay pinned above; pandas is a streamlit dependency.
+streamlit==1.66.1
+pandas==3.0.6
+# streamlit needs pyarrow; 20.0.0 is the newest that still works with numpy 1.26.4 (pyarrow 26 needs numpy 2).
+pyarrow==20.0.0
 # Not in the old repo: test runner for this one.
 pytest==8.4.2

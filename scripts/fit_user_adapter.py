@@ -17,8 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.base_model import load_config  # noqa: E402
 from src.correction_log import DEFAULT_DIR  # noqa: E402
-from src.evaluation import load_logs, pool  # noqa: E402
-from src.personalize import KINDS, make_adapter  # noqa: E402
+from src.evaluation import fit_user_adapters  # noqa: E402
 
 
 def main():
@@ -29,17 +28,11 @@ def main():
     args = p.parse_args()
     cfg = load_config()
     model = args.model or cfg["default_model"]
-    classes = cfg["classes"]
-    sessions = [s for (user, m, _, _), ss in load_logs(args.log_dir, classes).items()
-                if user == args.user_id and m == model for s in ss]
-    if not sessions:
+    fitted = fit_user_adapters(args.user_id, model, cfg, args.log_dir)
+    if not fitted:
         sys.exit(f"No correction logs for {args.user_id} with model {model} in {args.log_dir}.")
-    x, y = pool(sorted(sessions, key=lambda s: s["session"]))
-    sha = cfg["models"][model]["sha256"]
-    for kind in KINDS:
-        adapter = make_adapter(kind, classes, cfg["personalize"]).fit(x, y)
-        stem = adapter.save(args.user_id, model, sha)
-        print(f"{kind}: fitted on {adapter.n_examples} examples ({adapter.counts}) -> {stem}.npz")
+    for kind, (n, counts) in fitted.items():
+        print(f"{kind}: fitted on {n} examples ({counts}) -> models/users/{args.user_id}/")
 
 
 if __name__ == "__main__":
