@@ -1,7 +1,8 @@
 # Recommendation step (src/recommend.py). Songs come from a local CSV only; no web API is called.
 
-recommender: label                       # label (LabelPlaylistRecommender) | va (VARecommender)
-songs_csv: configs/example_songs.csv     # fake EXAMPLE rows; point this at a real dataset (README: schema)
+recommender: va                          # va (VARecommender, nearest songs in valence-arousal) | label
+songs_csv: data/songs/songs.csv          # built by scripts/convert_songs.py (gitignored)
+songs_fallback_csv: configs/example_songs.csv   # fake EXAMPLE rows, used with a warning if songs_csv is missing
 n: 5                                     # songs shown per press of R
 recent_memory: 20                        # the last 20 songs shown are not repeated
 seed: 0                                  # label recommender: seed for the random pick among matches

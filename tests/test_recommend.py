@@ -131,10 +131,10 @@ def write_csv(path, rows, header=("song_id", "title", "artist", "language", "emo
 
 def test_example_csv_loads_and_works_with_both_recommenders():
     for kind in ("label", "va"):
-        rec = make_recommender(kind, CFG, CLASSES)
+        rec = make_recommender(kind, CFG, CLASSES, songs_csv=CFG["songs_fallback_csv"])
         out = rec.recommend(onehot("Happy"), n=CFG["n"])
         assert len(out) == 3 if kind == "label" else len(out) == CFG["n"]
-    all_songs = load_songs(CFG["songs_csv"], CLASSES, need_va=True)
+    all_songs = load_songs(CFG["songs_fallback_csv"], CLASSES, need_va=True)
     assert len(all_songs) == 21 and all("EXAMPLE" in s.title and "EXAMPLE" in s.artist for s in all_songs)
 
 
@@ -153,3 +153,10 @@ def test_csv_validation(tmp_path):
     # valence/energy are optional for the label recommender
     assert load_songs(write_csv(tmp_path / "e.csv", [ok[:6]], header=("song_id", "title", "artist", "language",
                                                                       "emotion", "url")), CLASSES)[0].valence is None
+
+
+def test_missing_songs_csv_falls_back_to_example_with_warning():
+    cfg = {**CFG, "songs_csv": "data/songs/does_not_exist.csv"}
+    with pytest.warns(UserWarning, match="EXAMPLE"):
+        rec = make_recommender("va", cfg, CLASSES)
+    assert len(rec.songs) == 21

@@ -15,6 +15,7 @@ songs come only from a CSV with these columns:
 
 import csv
 import random
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
@@ -149,7 +150,12 @@ class VARecommender(Recommender):
 
 def make_recommender(kind, cfg, classes, songs_csv=None):
     """Build a recommender from configs/recommend.yaml (`cfg`); `songs_csv` overrides the config path."""
-    songs = load_songs(songs_csv or cfg["songs_csv"], classes, need_va=(kind == "va"))
+    path = songs_csv or cfg["songs_csv"]
+    if not songs_csv and not (Path(path) if Path(path).is_absolute() else ROOT / path).exists():
+        warnings.warn(f"{path} not found; using the fake EXAMPLE songs in {cfg['songs_fallback_csv']} "
+                      "(see README: scripts/convert_songs.py)")
+        path = cfg["songs_fallback_csv"]
+    songs = load_songs(path, classes, need_va=(kind == "va"))
     if kind == "label":
         return LabelPlaylistRecommender(songs, classes, seed=cfg["seed"])
     if kind == "va":
